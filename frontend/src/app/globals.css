@@ -1,0 +1,43 @@
+body {
+  background-color: #f9fafb;
+  font-family: 'Poppins', sans-serif;
+}
+
+.hero {
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.5)),
+    url('https://cdn.pixabay.com/photo/2016/11/19/14/00/online-1839870_1280.jpg')
+      no-repeat center center/cover;
+  height: 85vh;
+}
+
+.product-card img {
+  height: 250px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover img {
+  transform: scale(1.05);
+}
+
+.product-card {
+  transition: all 0.3s ease;
+}
+
+.product-card:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0px 12px 35px rgba(0,0,0,0.12);
+}
