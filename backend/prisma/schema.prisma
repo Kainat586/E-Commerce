@@ -1,25 +1,25 @@
-datasource db {
-  provider = "postgresql"
+generator client {
+  provider = "prisma-client-js"
 }
 
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           Int          @id @default(autoincrement())
-  email        String?      @unique
-  name         String?
-  password     String?
-  role         Role         @default(BUYER)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  orders       Order[]
-  reviews      Reviews[]
-  siteReviews  SiteReviews[]
-  carts        Cart[]
-  stores       Store[]
+  id          Int           @id @default(autoincrement())
+  email       String?       @unique
+  name        String?
+  password    String?
+  role        Role          @default(BUYER)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  orders      Order[]
+  reviews     Reviews[]
+  siteReviews SiteReviews[]
+  carts       Cart[]
+  stores      Store[]
 }
 
 model Store {
@@ -32,8 +32,8 @@ model Store {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  seller      User     @relation(fields: [sellerId], references: [id])
-  products    Product[]
+  seller   User      @relation(fields: [sellerId], references: [id])
+  products Product[]
 }
 
 enum Role {
@@ -42,34 +42,35 @@ enum Role {
 }
 
 model Cart {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   userId    Int
   productId Int
-  quantity  Int       @default(1)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id])
-  product   Product   @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 }
 
 model Product {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
   price       Float
-  stock       Int       @default(0)
+  stock       Int      @default(0)
   imageUrl    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  storeId     Int
-  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  orders      Order[]
-  reviews     Reviews[]
-  carts       Cart[]
+  orders  Order[]
+  reviews Reviews[]
+  carts   Cart[]
 }
+
 enum OrderStatus {
   PENDING
   PROCESSING
@@ -92,8 +93,8 @@ model Order {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  product       Product     @relation(fields: [productId], references: [id])
-  user          User?       @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
 }
 
 model Reviews {

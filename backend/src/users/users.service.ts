@@ -3,7 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './create-user.dto';
 import { UpdateUserDto } from './update-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from 'generated/prisma/enums';
+import { Role } from '@prisma/client';
 
 
 @Injectable()
