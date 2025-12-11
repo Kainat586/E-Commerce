@@ -6,7 +6,6 @@ export default function Products() {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    // Sample static data (later replace with backend API)
     setProducts([
       {
         id: 1,

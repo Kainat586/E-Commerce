@@ -1,5 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service'; // adjust path
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateStoreDto } from './create-store.dto';
 
 @Injectable()
@@ -7,14 +7,12 @@ export class StoreService {
   constructor(private prisma: PrismaService) {}
 
   async createStore(userId: number, dto: CreateStoreDto) {
-    // Check if seller already has a store
     const existing = await this.prisma.store.findUnique({
       where: { sellerId: userId },
     });
-
     if (existing) throw new BadRequestException('You already have a store');
 
-    const store = await this.prisma.store.create({
+    return this.prisma.store.create({
       data: {
         sellerId: userId,
         name: dto.name,
@@ -23,13 +21,47 @@ export class StoreService {
         logo: dto.logo,
       },
     });
-
-    return store;
   }
-
+  
   async getMyStore(userId: number) {
     return this.prisma.store.findUnique({
       where: { sellerId: userId },
     });
+  }
+
+  async getAllStores() {
+    return this.prisma.store.findMany();
+  }
+
+  async getNewArrivals(storeId: number) {
+    return this.prisma.product.findMany({
+      where: { storeId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+  }
+
+  async getTopSelling(storeId: number) {
+    const topSelling = await this.prisma.order.groupBy({
+      by: ['productId'],
+      where: { product: { storeId } },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 10,
+    });
+
+    const products = await Promise.all(
+      topSelling.map(async (item) => {
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+        });
+        return {
+          ...product,
+          soldQuantity: item._sum?.quantity || 0,
+        };
+      })
+    );
+
+    return products;
   }
 }

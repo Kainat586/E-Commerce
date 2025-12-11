@@ -1,39 +1,38 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import HeroSection from "@/components/Hero";
-import BrandBar from "@/components/BrandBar";
+import StoreBar from "@/components/StoreBar";
+import AllProductsCarousel from "@/components/Horizontal";
 import ProductSection from "@/components/ProductSection";
 import BrowseStyleSection from "@/components/BrowseStyleSection";
 import CustomerReviewSection from "@/components/CustomerReviews";
 
 export default function Home() {
-  const [brands, setBrands] = useState([]);
-  const [selectedBrand, setSelectedBrand] = useState("");
-  const [products, setProducts] = useState({
-    newArrivals: [],
-    topSelling: [],
-  });
+  const [stores, setStores] = useState([]);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [products, setProducts] = useState({ newArrivals: [], topSelling: [] });
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
-  const fetchBrands = async () => {
-  try {
-    const res = await fetch("http://localhost:5000/brands");
-    const data = await res.json(); 
-    const uniqueBrands = [...new Set(data.map((p) => p.name))];
+  // Fetch all stores
+  const fetchStores = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/store/all");
+      const data = await res.json();
+      setStores(data);
+    } catch (err) {
+      console.error("Error fetching stores:", err);
+    }
+  };
 
-    setBrands(data);
-  } catch (err) {
-    console.error("Error fetching brands:", err);
-  }
-};
-
-
-  const fetchBrandProducts = async (brand) => {
-    setSelectedBrand(brand);
+  // Fetch selected store's products
+  const fetchStoreProducts = async (store) => {
+    setSelectedStore(store);
+    setLoadingProducts(true);
 
     try {
       const [newArrivalsRes, topSellingRes] = await Promise.all([
-        fetch(`http://localhost:5000/products/brand/${encodeURIComponent(brand)}/new-arrivals`),
-        fetch(`http://localhost:5000/products/brand/${encodeURIComponent(brand)}/top-selling`),
+        fetch(`http://localhost:5000/store/${store.name}/new-arrivals`),
+        fetch(`http://localhost:5000/store/${store.id}/top-selling`),
       ]);
 
       const newArrivals = await newArrivalsRes.json();
@@ -41,12 +40,15 @@ export default function Home() {
 
       setProducts({ newArrivals, topSelling });
     } catch (err) {
-      console.error("Error fetching brand products:", err);
+      console.error("Error fetching store products:", err);
+      setProducts({ newArrivals: [], topSelling: [] });
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
   useEffect(() => {
-    fetchBrands();
+    fetchStores();
   }, []);
 
   return (
@@ -54,21 +56,44 @@ export default function Home() {
       <HeroSection />
 
       <div className="container my-5">
-        <BrandBar brands={brands} onSelectBrand={fetchBrandProducts} />
+        <h4 className="mb-3 fw-bold">Stores</h4>
+        <StoreBar
+          stores={stores}
+          selectedStore={selectedStore}
+          onSelectStore={fetchStoreProducts}
+        />
       </div>
 
-      {selectedBrand ? (
-        <>
-          <ProductSection title={`${selectedBrand} - New Arrivals`} products={products.newArrivals} />
-          <ProductSection title={`${selectedBrand} - Top Selling`} products={products.topSelling} />
-        </>
-      ) : (
+      {selectedStore && (
+        <div className="container mb-5">
+          {loadingProducts ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status"></div>
+              <p className="mt-2">Loading products...</p>
+            </div>
+          ) : (
+            <>
+              <ProductSection
+                title={`${selectedStore.name} - New Arrivals`}
+                products={products.newArrivals.length ? products.newArrivals : []}
+              />
+              <ProductSection
+                title={`${selectedStore.name} - Top Selling`}
+                products={products.topSelling.length ? products.topSelling : []}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {!selectedStore && (
         <div className="text-center py-5">
-          <h3>Select a brand to view its products</h3>
+          <h3>Select a store to view its products</h3>
         </div>
       )}
 
       <BrowseStyleSection />
+      <AllProductsCarousel />
       <CustomerReviewSection />
     </>
   );

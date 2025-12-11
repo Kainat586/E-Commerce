@@ -1,23 +1,49 @@
-import React from 'react';
+import React from "react";
 
 export default function OrderCard({ order, onView }) {
+  const statusColor = {
+    PENDING: "warning",
+    PROCESSING: "info",
+    SHIPPED: "primary",
+    DELIVERED: "success",
+    CANCELLED: "danger",
+  };
+
   return (
-    <div className="border rounded p-4 flex gap-4">
-      <img src={order.product?.imageUrl} alt={order.product?.name} className="w-24 h-24 object-cover rounded" />
-      <div className="flex-1">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-semibold">{order.product?.name}</h3>
-            <div className="text-sm text-gray-600">Qty: {order.quantity} • ₹{order.totalPrice}</div>
-            <div className="text-sm text-gray-500">Ordered: {new Date(order.createdAt).toLocaleString()}</div>
-          </div>
-          <div>
-            <div className="text-sm font-medium">{order.status}</div>
-          </div>
+    <div className="card border-0 shadow-sm mb-3 p-3 rounded-4">
+      <div className="row g-3">
+        {/* Product Image */}
+        <div className="col-3 d-flex align-items-center">
+          <img
+            src={order.product?.imageUrl}
+            alt={order.product?.name}
+            className="img-fluid rounded-3 border"
+            style={{ height: "100px", width: "100px", objectFit: "cover" }}
+          />
         </div>
 
-        <div className="mt-3 flex gap-2">
-          <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={() => onView(order.id)}>View</button>
+        {/* Product & Order Details */}
+        <div className="col-7">
+          <h5 className="fw-bold mb-1">{order.product?.name}</h5>
+          <div className="text-muted small mb-1">
+            Qty: <strong>{order.quantity}</strong> • ₹{order.totalPrice}
+          </div>
+          <div className="small text-secondary">
+            Ordered on: {new Date(order.createdAt).toLocaleString()}
+          </div>
+          <span className={`badge bg-${statusColor[order.status]} mt-2`}>
+            {order.status}
+          </span>
+        </div>
+
+        {/* View Button */}
+        <div className="col-2 d-flex align-items-center justify-content-end">
+          <button
+            className="btn btn-outline-primary btn-sm rounded-pill px-3"
+            onClick={() => onView(order.id)}
+          >
+            View
+          </button>
         </div>
       </div>
     </div>

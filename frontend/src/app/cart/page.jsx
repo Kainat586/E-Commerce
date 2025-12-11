@@ -1,45 +1,82 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Button } from "react-bootstrap";
-import CheckoutModal from "@/modals/CheckoutModal";
-import { Trash2, Plus, Minus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { Button, Form, Spinner, Alert, Container, Row, Col } from "react-bootstrap";
 import LoginModal from "@/modals/LoginModal";
+import TrackOrderModal from "@/modals/TrackOrderModal";
+import { Trash2, Plus, Minus, ShoppingBag, Truck } from "lucide-react";
+
+const customStyles = {
+  pageContainer: {
+    padding: "3rem 0",
+    backgroundColor: "#f8f9fa",
+  },
+  mainCard: {
+    borderRadius: "1rem",
+    boxShadow: "0 8px 16px rgba(0, 0, 0, 0.05)",
+    backgroundColor: "#ffffff",
+    padding: "2.5rem",
+  },
+  itemCard: {
+    borderRadius: "0.75rem",
+    border: "1px solid #e9ecef",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    marginBottom: "1.5rem",
+    backgroundColor: "#fff",
+  },
+  summaryCard: {
+    borderRadius: "1rem",
+    backgroundColor: "#f1f3f5",
+    padding: "2rem",
+  },
+  primaryButton: {
+    backgroundColor: "#198754",
+    borderColor: "#198754",
+    fontWeight: "600",
+    padding: "0.75rem 0",
+    borderRadius: "0.5rem",
+  },
+};
+
+const QtyControlButton = ({ icon: Icon, onClick }) => (
+  <Button
+    variant="light"
+    size="sm"
+    className="p-1 border-0"
+    onClick={onClick}
+    style={{ transition: "background-color 0.2s" }}
+  >
+    <Icon size={16} className="text-secondary" />
+  </Button>
+);
+
 export default function CartPage() {
+  const router = useRouter();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showCheckoutModal, setCheckoutModal] = useState(false);
+  const [showTrackModal, setShowTrackModal] = useState(false);
+  const [trackOrderId, setTrackOrderId] = useState(null);
+  const [showAlert, setShowAlert] = useState(false);
+
   const fetchCart = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      if (!token) return alert("⚠️ Please log in to view your cart!");
-      if (!token) {
-        console.warn("No user/token — showing login modal");
-        setShowLoginModal(true);
-        return;
-      }
+      if (!token) return setShowLoginModal(true);
 
       const res = await fetch(`http://localhost:5000/cart`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (res.status === 401) {
-        alert("Session expired! Please log in again.");
-        localStorage.removeItem("token");
-        return;
-      }
-
       const data = await res.json();
       if (Array.isArray(data)) {
         setCartItems(data);
         const allIds = data.map((i) => i.productId);
         setSelected(allIds);
         calculateTotal(data, allIds);
-      } else {
-        setCartItems([]);
       }
     } catch (err) {
       console.error(err);
@@ -47,14 +84,12 @@ export default function CartPage() {
       setLoading(false);
     }
   };
-
   const calculateTotal = (items, selectedIds = selected) => {
     const sum = items
       .filter((i) => selectedIds.includes(i.productId))
       .reduce((acc, i) => acc + i.product.price * i.quantity, 0);
     setTotal(sum);
   };
-
   const updateQuantity = async (productId, newQty) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -62,10 +97,7 @@ export default function CartPage() {
 
     await fetch("http://localhost:5000/cart/update", {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ productId, quantity: newQty }),
     });
 
@@ -75,17 +107,13 @@ export default function CartPage() {
     setCartItems(updated);
     calculateTotal(updated);
   };
-
   const removeFromCart = async (productId) => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
     await fetch("http://localhost:5000/cart/remove", {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ productId }),
     });
 
@@ -94,11 +122,26 @@ export default function CartPage() {
     setSelected((prev) => prev.filter((id) => id !== productId));
     calculateTotal(updated);
   };
+  const handleSelect = (productId) => {
+    const updated = selected.includes(productId)
+      ? selected.filter((id) => id !== productId)
+      : [...selected, productId];
+    setSelected(updated);
+    calculateTotal(cartItems, updated);
+  };
 
-  const checkout = () => {
-    if (selected.length === 0) return alert("⚠️ Select at least one item!");
-    const items = cartItems.filter((i) => selected.includes(i.productId));
-    alert(`🛍️ Checkout: ${items.map((i) => i.product.name).join(", ")}`);
+  const navigateToCheckout = () => {
+    if (selected.length === 0) {
+      setShowAlert(true);
+      return;
+    }
+    const query = selected.join(",");
+    router.push(`/checkout?selectedIds=${query}`);
+  };
+
+  const handleTrackOrder = (orderId) => {
+    setTrackOrderId(orderId);
+    setShowTrackModal(true);
   };
 
   useEffect(() => {
@@ -107,128 +150,147 @@ export default function CartPage() {
 
   if (loading)
     return (
-      <div className="text-center py-5">
-        <p className="text-muted">Loading your cart...</p>
+      <div className="text-center py-5" style={customStyles.pageContainer}>
+        <Spinner animation="border" variant="primary" />
+        <p className="text-muted mt-3 fs-5">Loading your cart...</p>
       </div>
     );
 
   if (cartItems.length === 0)
     return (
-      <div className="text-center py-5">
-        <img
-          src="/empty-cart.png"
-          alt="Empty Cart"
-          style={{ width: 220, opacity: 0.7 }}
-        />
-        <h5 className="mt-3 text-muted">Your cart is empty</h5>
+      <div className="text-center py-5" style={customStyles.pageContainer}>
+        <ShoppingBag size={80} className="text-muted" style={{ opacity: 0.4 }} />
+        <h3 className="mt-4 text-dark fw-bold">Your Cart is Empty</h3>
+        <p className="text-secondary mt-2">Find something great to add!</p>
       </div>
     );
 
   return (
-    <div className="container-fluid py-5 bg-light" style={{ minHeight: "90vh" }}>
-      <h2 className="fw-bold mb-5 text-center">🛒 Your Cart</h2>
-      <div className="row gx-5">
-        {/* LEFT: Cart Items */}
-        <div className="col-lg-8 mb-2">
-          {cartItems.map((item) => (
-            <div
-              key={item.id}
-              className="card mb-3 shadow-lg rounded-3"
+    <div style={customStyles.pageContainer}>
+      <Container style={{ maxWidth: "1100px" }}>
+        <div style={customStyles.mainCard}>
+          <h2 className="fw-bolder mb-5 text-center text-dark">🛒 Your Shopping Bag</h2>
+
+          {showAlert && (
+            <Alert
+              variant="warning"
+              onClose={() => setShowAlert(false)}
+              dismissible
+              className="mb-4 rounded-3 fw-bold"
             >
-              <div className="row g-0 align-items-center">
-                <div className="col-md-2 text-center p-2">
-                  <img
-                    src={item.product.imageUrl || "/placeholder.png"}
-                    className="img-fluid rounded"
-                    style={{ width: 100, height: 100, objectFit: "cover" }}
-                    alt={item.product.name}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <div className="card-body">
-                    <h5 className="card-title fw-bold">{item.product.name}</h5>
-                    <p className="text-muted mb-0">${item.product.price.toFixed(2)}</p>
+              ⚠️ Select items to proceed.
+            </Alert>
+          )}
+
+          <Row className="g-4 g-lg-5 d-flex align-items-stretch">
+            <Col lg={8} className="d-flex flex-column">
+              <h4 className="mb-4 fw-bold text-dark">Items ({selected.length} Selected)</h4>
+              <div className="flex-grow-1">
+                {cartItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="d-flex align-items-center p-3 p-md-4 mb-3 position-relative item-card-hover"
+                  >
+                    <Form.Check
+                      type="checkbox"
+                      checked={selected.includes(item.productId)}
+                      onChange={() => handleSelect(item.productId)}
+                      className="me-3 fs-5 flex-shrink-0"
+                      style={{ transform: "scale(1.2)" }}
+                    />
+                    <img
+                      src={item.product.imageUrl || "/placeholder.png"}
+                      className="img-fluid rounded-3 shadow-sm me-4 flex-shrink-0"
+                      style={{ width: 90, height: 90, objectFit: "cover" }}
+                      alt={item.product.name}
+                    />
+                    <div className="flex-grow-1 me-4">
+                      <h5 className="fw-bold mb-1 text-dark">{item.product.name}</h5>
+                      <p className="text-muted small mb-2">
+                        Unit: <span className="fw-semibold">${item.product.price.toFixed(2)}</span>
+                      </p>
+                    </div>
+                    <div className="d-flex flex-column flex-md-row align-items-center justify-content-end text-end ms-auto">
+                      <div
+                        className="d-flex align-items-center border rounded-pill me-md-4 mb-2 mb-md-0"
+                        style={{ padding: "4px" }}
+                      >
+                        <QtyControlButton
+                          icon={Minus}
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        />
+                        <span className="mx-2 fw-bold text-dark">{item.quantity}</span>
+                        <QtyControlButton
+                          icon={Plus}
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        />
+                      </div>
+                      <div className="d-flex flex-column align-items-end">
+                        <p className="fw-bolder fs-5 mb-1 text-primary">
+                          ${(item.product.price * item.quantity).toFixed(2)}
+                        </p>
+                        <Button
+                          variant="link"
+                          className="text-danger p-0 d-flex align-items-center small"
+                          onClick={() => removeFromCart(item.productId)}
+                        >
+                          <Trash2 size={14} className="me-1" /> Remove
+                        </Button>
+                      </div>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </Col>
+
+            <Col lg={4} className="d-flex">
+              <div
+                style={customStyles.summaryCard}
+                className="w-100 h-100 d-flex flex-column"
+              >
+                <h4 className="fw-bold mb-4 text-dark">Order Summary</h4>
+                <hr className="my-3 border-secondary border-opacity-25" />
+                <div className="d-flex justify-content-between mb-3">
+                  <span className="text-secondary fw-semibold">Subtotal ({selected.length} Items)</span>
+                  <span className="fw-bold text-dark">${total.toFixed(2)}</span>
                 </div>
-                <div className="col-md-3 d-flex align-items-center justify-content-center">
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="rounded-circle"
-                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                  >
-                    <Minus size={16} />
-                  </Button>
-                  <span className="mx-3 fw-bold">{item.quantity}</span>
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="rounded-circle"
-                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                  >
-                    <Plus size={16} />
-                  </Button>
+                <div className="d-flex justify-content-between mb-3">
+                  <span className="text-secondary fw-semibold">Shipping Cost</span>
+                  <span className="text-success fw-bolder d-flex align-items-center">
+                    <Truck size={16} className="me-1" /> FREE
+                  </span>
                 </div>
-                <div className="col-md-2 text-center">
-                  <p className="fw-bold mb-0">${(item.product.price * item.quantity).toFixed(2)}</p>
-                </div>
-                <div className="col-md-1 text-center">
+                <hr className="my-4 border-secondary border-opacity-25" />
+                <div className="mt-auto">
+                  <div className="d-flex justify-content-between fw-bolder fs-4 mb-4 text-dark">
+                    <span>Total</span>
+                    <span className="text-success">${total.toFixed(2)}</span>
+                  </div>
                   <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={() => removeFromCart(item.productId)}
+                    variant="success"
+                    className="w-100"
+                    style={customStyles.primaryButton}
+                    onClick={navigateToCheckout}
+                    disabled={selected.length === 0}
                   >
-                    <Trash2 size={16} />
+                    Proceed to Checkout
                   </Button>
                 </div>
               </div>
-            </div>
-          ))}
+            </Col>
+          </Row>
         </div>
-
-        {/* RIGHT: Summary */}
-        <div className="col-lg-4">
-          <div className="card shadow-lg rounded-3 p-4">
-            <h5 className="fw-bold mb-3">Order Summary</h5>
-            <hr />
-            <div className="d-flex justify-content-between mb-2">
-              <span>Items ({selected.length})</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-            <div className="d-flex justify-content-between mb-3">
-              <span>Shipping</span>
-              <span className="text-success">Free</span>
-            </div>
-            <hr />
-            <div className="d-flex justify-content-between fw-bold fs-5 mb-3">
-              <span>Total</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-            <Button
-              variant="success"
-              className="w-100 fw-bold"
-              onClick={() => setCheckoutModal(true)}
-              disabled={selected.length === 0}
-            >
-              Proceed to Checkout
-            </Button>
-          </div>
-        </div>
-      </div>
-      <CheckoutModal
-        show={showCheckoutModal}
-        onHide={() => setCheckoutModal(false)}
-        items={cartItems.filter(i => selected.includes(i.productId))}
-      />
+      </Container>
 
       <LoginModal
         show={showLoginModal}
         onHide={() => setShowLoginModal(false)}
-        onSwitch={() => {
-          setShowLoginModal(false);
-        }}
       />
-
+      <TrackOrderModal
+        show={showTrackModal}
+        onHide={() => setShowTrackModal(false)}
+        orderId={trackOrderId}
+      />
     </div>
   );
 }

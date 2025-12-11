@@ -12,8 +12,6 @@ export class ProductDto {
     stock: number;
     @IsUrl({}, { message: 'Image URL must be a valid URL' })
     imageUrl: string;
-    @IsInt({ message: 'Brand ID must be an integer' })
-    brandId?: number;
     @IsInt({ message: 'Store ID must be an integer' })
     storeId: number;
 }

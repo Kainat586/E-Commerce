@@ -10,12 +10,14 @@ import { UsersController } from './users/users.controller';
 import { UsersService } from './users/users.service';
 import { UsersModule } from './users/users.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { SellerOrdersModule } from './orders/seller-orders/seller-orders.module';
 
 import { SitereviewsModule } from './sitereviews/sitereviews.module';
 import { CartModule } from './cart/cart.module';
 import { AuthModule } from './auth/auth.module';
 import { GeminiModule } from './gemini/gemini.module';
 import { StoreModule } from './store/store.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -29,9 +31,11 @@ import { StoreModule } from './store/store.module';
     ReviewsModule,
     SitereviewsModule,
     CartModule,
+    SellerOrdersModule,
     AuthModule,
     GeminiModule,
-    StoreModule
+    StoreModule,
+    StatsModule
   ],
   controllers: [AppController, UsersController],
   providers: [AppService, PrismaService, UsersService],

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import SellerDashboardLayout from "../layout";
 import AddEditProductModal from "@/modals/AddEditModal";
 import DeleteProductModal from "@/modals/DeleteProductModal";
 
@@ -16,15 +15,15 @@ export default function SellerProductsPage() {
   const [deleteProduct, setDeleteProduct] = useState(null);
 
   useEffect(() => {
-    fetchProducts();
+    fetchStoreAndProducts();
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchStoreAndProducts = async () => {
     setLoading(true);
     const token = localStorage.getItem("token");
 
     try {
-      
+      // Fetch store info first
       const storeRes = await fetch("http://localhost:5000/store/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -36,10 +35,9 @@ export default function SellerProductsPage() {
         return;
       }
 
-     
+      // Fetch products for the store
       const productsRes = await fetch(`http://localhost:5000/products/store/${storeData.id}`);
       const productsData = await productsRes.json();
-
       setProducts(Array.isArray(productsData) ? productsData : []);
     } catch (err) {
       console.error("Products fetch error:", err);
@@ -49,65 +47,90 @@ export default function SellerProductsPage() {
     }
   };
 
+  const handleAddProduct = () => {
+    if (!store?.id) return alert("Store not loaded yet. Please wait a moment.");
+    setEditProduct(null);
+    setShowAddEditModal(true);
+  };
+
+  const handleEditProduct = (product) => {
+    if (!store?.id) return alert("Store not loaded yet. Please wait a moment.");
+    setEditProduct(product);
+    setShowAddEditModal(true);
+  };
+
   return (
-    <div>
+    <div className="container py-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold">Your Products</h2>
+        <h2 className="fw-bold text-primary">Your Products</h2>
         <button
-          className="btn btn-primary"
-          onClick={() => {
-            setEditProduct(null);
-            setShowAddEditModal(true);
-          }}
+          className="btn btn-primary btn-lg rounded-pill"
+          onClick={handleAddProduct}
         >
-          Add Product
+          <i className="bi bi-plus-lg me-2"></i> Add Product
         </button>
       </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <div className="d-flex justify-content-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
       ) : products.length === 0 ? (
         <div className="text-center mt-5">
           <img
             src="/empty-products.svg"
             className="img-fluid mb-3"
-            style={{ maxWidth: "200px" }}
+            style={{ maxWidth: "220px" }}
           />
-          <h5 className="fw-bold">No Products Yet</h5>
+          <h5 className="fw-bold text-secondary">No Products Yet</h5>
+          <p className="text-muted">Click "Add Product" to create your first product.</p>
         </div>
       ) : (
-        <div className="row g-4">
+        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
           {products.map((p) => (
-            <div key={p.id} className="col-md-4">
-              <div className="card shadow-sm border-0 rounded-3 h-100 hover-shadow">
-                <img
-                  src={p.imageUrl || "/default-product.png"}
-                  className="card-img-top"
-                  style={{ height: "180px", objectFit: "cover" }}
-                />
+            <div key={p.id} className="col">
+              <div className="card h-100 shadow-sm border-0 rounded-4">
+                <div className="position-relative">
+                  <img
+                    src={p.imageUrl || "/default-product.png"}
+                    className="card-img-top rounded-top-4"
+                    style={{ height: "200px", objectFit: "cover" }}
+                  />
+                  <span
+                    className={`position-absolute top-0 end-0 m-2 badge ${p.stock > 0 ? "bg-success" : "bg-danger"}`}
+                    style={{ fontSize: "0.85rem" }}
+                  >
+                    {p.stock > 0 ? "In Stock" : "Out of Stock"}
+                  </span>
+                </div>
 
                 <div className="card-body d-flex flex-column justify-content-between">
                   <div>
-                    <h5>{p.name}</h5>
-                    <p className="text-muted">${p.price}</p>
-                    <span className={`badge ${p.stock > 0 ? "bg-success" : "bg-danger"}`}>
-                      {p.stock > 0 ? "In Stock" : "Out of Stock"}
-                    </span>
+                    <h5 className="card-title fw-bold">{p.name}</h5>
+                    <p className="text-primary fw-bold fs-5 mb-2">${p.price}</p>
+                    <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
+                      SKU: {p.id} • {p.category || "General"}
+                    </p>
                   </div>
 
                   <div className="mt-3 d-flex justify-content-between">
-                    <button className="btn btn-sm btn-outline-primary" onClick={() => {
-                      setEditProduct(p);
-                      setShowAddEditModal(true);
-                    }}>
-                      Edit
+                    <button
+                      className="btn btn-outline-primary btn-sm rounded-pill"
+                      onClick={() => handleEditProduct(p)}
+                    >
+                      <i className="bi bi-pencil-fill me-1"></i> Edit
                     </button>
 
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => {
-                      setDeleteProduct(p);
-                      setShowDeleteModal(true);
-                    }}>
-                      Delete
+                    <button
+                      className="btn btn-outline-danger btn-sm rounded-pill"
+                      onClick={() => {
+                        setDeleteProduct(p);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <i className="bi bi-trash-fill me-1"></i> Delete
                     </button>
                   </div>
                 </div>
@@ -126,7 +149,7 @@ export default function SellerProductsPage() {
           onHide={() => setShowAddEditModal(false)}
           onSuccess={() => {
             setShowAddEditModal(false);
-            fetchProducts();
+            fetchStoreAndProducts();
           }}
         />
       )}
@@ -138,15 +161,15 @@ export default function SellerProductsPage() {
           onHide={() => setShowDeleteModal(false)}
           onSuccess={() => {
             setShowDeleteModal(false);
-            fetchProducts();
+            fetchStoreAndProducts();
           }}
         />
       )}
 
       <style jsx>{`
-        .hover-shadow:hover {
-          box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-          transform: translateY(-3px);
+        .card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.15);
           transition: all 0.3s ease;
         }
       `}</style>

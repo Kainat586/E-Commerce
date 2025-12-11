@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function SellerPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showModal, setShowModal] = useState(false); // FIX
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -13,7 +14,9 @@ export default function SellerPage() {
     const role = localStorage.getItem("role");
 
     if (!token || role !== "SELLER") {
+      // USER NOT LOGGED IN
       setIsAuthenticated(false);
+      setShowModal(true); // SHOW LOGIN MODAL
       setLoading(false);
       return;
     }
@@ -26,14 +29,17 @@ export default function SellerPage() {
       const res = await fetch("http://localhost:5000/auth/verify", {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.status === 200 && role === "SELLER") {
         setIsAuthenticated(true);
-        router.push("/seller/dashboard"); // Redirect after auth
+        router.push("/seller/dashboard");
       } else {
         setIsAuthenticated(false);
+        setShowModal(true); // SHOW MODAL
       }
     } catch {
       setIsAuthenticated(false);
+      setShowModal(true); // SHOW MODAL
     } finally {
       setLoading(false);
     }
@@ -41,15 +47,16 @@ export default function SellerPage() {
 
   if (loading) return <p>Loading...</p>;
 
-  if (!isAuthenticated) {
-    return (
-      <LoginModal
-        show={true}
-        onHide={() => {}}
-        onLoginSuccess={() => window.location.reload()}
-      />
-    );
-  }
+  return (
+    <>
+      {!isAuthenticated && (
+        <LoginModal
+          show={showModal}
+          onHide={() => setShowModal(false)}
+          defaultRole="SELLER"   
+        />
 
-  return null; // Or a loading placeholder, since redirect happens
+      )}
+    </>
+  );
 }
